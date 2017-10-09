@@ -41,6 +41,7 @@ extern __off64_t lseek64 __P ((int __fd, __off64_t __offset, int __whence));
 #include	<sys/time.h>
 #include	<getopt.h>
 #include	<fcntl.h>
+#include	<pthread.h>
 #include	<stdio.h>
 #include	<errno.h>
 #include	<string.h>
@@ -1595,12 +1596,15 @@ struct cmap_hooks {
 
 extern void set_cmap_hooks(void);
 extern void set_hooks(void);
+extern int lock_cluster(struct supertype *st);
+extern void unlock_cluster(void);
 
 struct dlm_hooks {
 	void *dlm_handle;	/* dlm lib related */
 
 	dlm_lshandle_t (*create_lockspace)(const char *name,
 					   unsigned int mode);
+	dlm_lshandle_t (*open_lockspace)(const char *name);
 	int (*release_lockspace)(const char *name, dlm_lshandle_t ls,
 				 int force);
 	int (*ls_lock)(dlm_lshandle_t lockspace, uint32_t mode,
@@ -1609,9 +1613,8 @@ struct dlm_hooks {
 		       uint32_t parent, void (*astaddr) (void *astarg),
 		       void *astarg, void (*bastaddr) (void *astarg),
 		       void *range);
-	int (*ls_unlock)(dlm_lshandle_t lockspace, uint32_t lkid,
-			 uint32_t flags, struct dlm_lksb *lksb,
-			 void *astarg);
+	int (*ls_unlock_wait)(dlm_lshandle_t lockspace, uint32_t lkid,
+			      uint32_t flags, struct dlm_lksb *lksb);
 	int (*ls_get_fd)(dlm_lshandle_t ls);
 	int (*dispatch)(int fd);
 };
@@ -1621,6 +1624,8 @@ extern int dlm_funs_ready(void);
 extern int cluster_get_dlmlock(int *lockid);
 extern int cluster_release_dlmlock(int lockid);
 extern void set_dlm_hooks(void);
+extern void dlm_mutex_lock(void);
+extern void dlm_mutex_unlock(void);
 
 #define _ROUND_UP(val, base)	(((val) + (base) - 1) & ~(base - 1))
 #define ROUND_UP(val, base)	_ROUND_UP(val, (typeof(val))(base))
